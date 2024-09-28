@@ -1,514 +1,294 @@
-// C++ program to implement
-// the above approach
-#include <bits/stdc++.h>
+#include<iostream>
+#include<string>
+#include<cmath>
+#include<algorithm>
+#include<vector>
 
-using namespace std;
+class BigInt {
+private:
+    std::string number;  // To store the large number as a string
+    bool isNegative;     // To check if the number is negative
 
-class BigInt{
-	string digits;
+    // Helper function to remove leading zeros
+    void removeLeadingZeros() {
+        while (number.length() > 1 && number[0] == '0') {
+            number.erase(0, 1);  // Remove leading zeros
+        }
+    }
+
+    // Helper function to add two positive strings
+    std::string addStrings(const std::string &num1, const std::string &num2) {
+        std::string result = "";
+        int carry = 0, sum = 0;
+        int n1 = num1.size(), n2 = num2.size();
+        
+        std::string rev1(num1.rbegin(), num1.rend());
+        std::string rev2(num2.rbegin(), num2.rend());
+
+        for (int i = 0; i < std::max(n1, n2); i++) {
+            int digit1 = (i < n1) ? rev1[i] - '0' : 0;
+            int digit2 = (i < n2) ? rev2[i] - '0' : 0;
+            sum = digit1 + digit2 + carry;
+            carry = sum / 10;
+            result += (sum % 10) + '0';
+        }
+
+        if (carry) result += carry + '0';
+        std::reverse(result.begin(), result.end());
+        return result;
+    }
+
+    // Helper function to subtract two positive strings (num1 >= num2)
+    std::string subtractStrings(const std::string &num1, const std::string &num2) {
+        std::string result = "";
+        int borrow = 0, diff = 0;
+        int n1 = num1.size(), n2 = num2.size();
+        
+        std::string rev1(num1.rbegin(), num1.rend());
+        std::string rev2(num2.rbegin(), num2.rend());
+
+        for (int i = 0; i < n1; i++) {
+            int digit1 = rev1[i] - '0';
+            int digit2 = (i < n2) ? rev2[i] - '0' : 0;
+            diff = digit1 - digit2 - borrow;
+            
+            if (diff < 0) {
+                diff += 10;
+                borrow = 1;
+            } else {
+                borrow = 0;
+            }
+
+            result += diff + '0';
+        }
+
+        std::reverse(result.begin(), result.end());
+        removeLeadingZeros();
+        return result;
+    }
+
+    // Helper function for multiplication of two numbers
+    std::string multiplyStrings(const std::string &num1, const std::string &num2) {
+        std::vector<int> result(num1.size() + num2.size(), 0);
+        for (int i = num1.size() - 1; i >= 0; i--) {
+            for (int j = num2.size() - 1; j >= 0; j--) {
+                int mul = (num1[i] - '0') * (num2[j] - '0');
+                int sum = result[i + j + 1] + mul;
+                result[i + j + 1] = sum % 10;
+                result[i + j] += sum / 10;
+            }
+        }
+
+        std::string resultStr;
+        for (int num : result) {
+            if (!(resultStr.empty() && num == 0)) {
+                resultStr += std::to_string(num);
+            }
+        }
+        return resultStr.empty() ? "0" : resultStr;
+    }
+
+    // Helper function for long division
+    std::string divideStrings(const std::string &num1, const std::string &num2) {
+        std::string quotient = "";
+        BigInt dividend(num1);
+        BigInt divisor(num2);
+        BigInt current("0");
+
+        if (dividend < divisor) return "0";
+
+        for (char digit : num1) {
+            current = current * BigInt("10") + BigInt(std::string(1, digit));
+            int qDigit = 0;
+
+            while (current >= divisor) {
+                current = current - divisor;
+                qDigit++;
+            }
+
+            quotient += std::to_string(qDigit);
+        }
+
+        return quotient.empty() ? "0" : quotient;
+    }
+
 public:
+    // Constructor to initialize BigInt from string
+    BigInt(const std::string &num) {
+        if (num[0] == '-') {
+            isNegative = true;
+            number = num.substr(1);  // Remove the negative sign
+        } else {
+            isNegative = false;
+            number = num;
+        }
+        removeLeadingZeros();
+    }
 
-	//Constructors:
-	BigInt(unsigned long long n = 0);
-	BigInt(string &);
-	BigInt(const char *);
-	BigInt(BigInt &);
+    // Addition operator
+    BigInt operator+(const BigInt &other) {
+        if (isNegative == other.isNegative) {
+            BigInt result(addStrings(number, other.number));
+            result.isNegative = isNegative;
+            return result;
+        } else {
+            if (number >= other.number) {
+                BigInt result(subtractStrings(number, other.number));
+                result.isNegative = isNegative;
+                return result;
+            } else {
+                BigInt result(subtractStrings(other.number, number));
+                result.isNegative = other.isNegative;
+                return result;
+            }
+        }
+    }
 
-	//Helper Functions:
-	friend void divide_by_2(BigInt &a);
-	friend bool Null(const BigInt &);
-	friend int Length(const BigInt &);
-	int operator[](const int)const;
+    // Subtraction operator
+    BigInt operator-(const BigInt &other) {
+        if (isNegative != other.isNegative) {
+            BigInt result(addStrings(number, other.number));
+            result.isNegative = isNegative;
+            return result;
+        } else {
+            if (number >= other.number) {
+                BigInt result(subtractStrings(number, other.number));
+                result.isNegative = isNegative;
+                return result;
+            } else {
+                BigInt result(subtractStrings(other.number, number));
+                result.isNegative = !isNegative;
+                return result;
+            }
+        }
+    }
 
-			/* * * * Operator Overloading * * * */
+    // Multiplication operator
+    BigInt operator*(const BigInt &other) {
+        BigInt result(multiplyStrings(number, other.number));
+        result.isNegative = (isNegative != other.isNegative);
+        return result;
+    }
 
-	//Direct assignment
-	BigInt &operator=(const BigInt &);
+    // Division operator
+    BigInt operator/(const BigInt &other) {
+        if (other == BigInt("0")) throw std::invalid_argument("Division by zero!");
+        BigInt result(divideStrings(number, other.number));
+        result.isNegative = (isNegative != other.isNegative);
+        return result;
+    }
+// Division operator
+    BigInt operator/(const BigInt &other) {
+        if (other == BigInt("0")) throw std::invalid_argument("Division by zero!");
+        BigInt result(divideStrings(number, other.number));
+        result.isNegative = (isNegative != other.isNegative);
+        return result;
+    }
 
-	//Post/Pre - Incrementation
-	BigInt &operator++();
-	BigInt operator++(int temp);
-	BigInt &operator--();
-	BigInt operator--(int temp);
+    // Modulo operator
+    BigInt operator%(const BigInt &other) const {
+        BigInt remainder("0");
+        BigInt divisor = other;
 
-	//Addition and Subtraction
-	friend BigInt &operator+=(BigInt &, const BigInt &);
-	friend BigInt operator+(const BigInt &, const BigInt &);
-	friend BigInt operator-(const BigInt &, const BigInt &);
-	friend BigInt &operator-=(BigInt &, const BigInt &);
+        if (*this < divisor) {
+            return *this;
+        }
 
-	//Comparison operators
-	friend bool operator==(const BigInt &, const BigInt &);
-	friend bool operator!=(const BigInt &, const BigInt &);
+        for (char digit : number) {
+            remainder = remainder * BigInt("10") + BigInt(std::string(1, digit));
+            while (remainder >= divisor) {
+                remainder = remainder - divisor;
+            }
+        }
 
-	friend bool operator>(const BigInt &, const BigInt &);
-	friend bool operator>=(const BigInt &, const BigInt &);
-	friend bool operator<(const BigInt &, const BigInt &);
-	friend bool operator<=(const BigInt &, const BigInt &);
+        return remainder;
+    }
 
-	//Multiplication and Division
-	friend BigInt &operator*=(BigInt &, const BigInt &);
-	friend BigInt operator*(const BigInt &, const BigInt &);
-	friend BigInt &operator/=(BigInt &, const BigInt &);
-	friend BigInt operator/(const BigInt &, const BigInt &);
+    // Greater than operator (BigInt > BigInt)
+    bool operator>(const BigInt &other) const {
+        if (isNegative != other.isNegative) {
+            return other.isNegative;
+        }
 
-	//Modulo
-	friend BigInt operator%(const BigInt &, const BigInt &);
-	friend BigInt &operator%=(BigInt &, const BigInt &);
+        if (number.length() != other.number.length()) {
+            return (number.length() > other.number.length()) ^ isNegative;
+        }
 
-	//Power Function
-	friend BigInt &operator^=(BigInt &,const BigInt &);
-	friend BigInt operator^(BigInt &, const BigInt &);
-	
-	//Square Root Function
-	friend BigInt sqrt(BigInt &a);
+        return (number > other.number) ^ isNegative;
+    }
 
-	//Read and Write
-	friend ostream &operator<<(ostream &,const BigInt &);
-	friend istream &operator>>(istream &, BigInt &);
+    // Equality operator (==)
+    bool operator==(const BigInt &other) const {
+        return (isNegative == other.isNegative && number == other.number);
+    }
 
-	//Others
-	friend BigInt NthCatalan(int n);
-	friend BigInt NthFibonacci(int n);
-	friend BigInt Factorial(int n);
+    // Less than operator (BigInt < BigInt)
+    bool operator<(const BigInt &other) const {
+        return !(*this > other) && !(*this == other);
+    }
+
+    // Greater than or equal to operator (BigInt >= BigInt)
+    bool operator>=(const BigInt &other) const {
+        return (*this > other) || (*this == other);
+    }
+
+    // Less than or equal to operator (BigInt <= BigInt)
+    bool operator<=(const BigInt &other) const {
+        return (*this < other) || (*this == other);
+    }
+
+    // Display function
+    void display() const {
+        if (isNegative) std::cout << "-";
+        std::cout << number << std::endl;
+    }
+
+    // Static Fibonacci function
+    static BigInt fibonacci(int n) {
+        if (n == 0) return BigInt("0");
+        if (n == 1) return BigInt("1");
+        BigInt a("0"), b("1"), c("1");
+        for (int i = 2; i <= n; i++) {
+            c = a + b;
+            a = b;
+            b = c;
+        }
+        return c;
+    }
+
+    // Static Catalan number function
+    static BigInt catalan(int n) {
+        BigInt result = factorial(2 * n) / (factorial(n + 1) * factorial(n));
+        return result;
+    }
+
+    // Static factorial function
+    static BigInt factorial(int n) {
+        BigInt result("1");
+        for (int i = 2; i <= n; i++) {
+            result = result * BigInt(std::to_string(i));
+        }
+        return result;
+    }
 };
 
-BigInt::BigInt(string & s){
-	digits = "";
-	int n = s.size();
-	for (int i = n - 1; i >= 0;i--){
-		if(!isdigit(s[i]))
-			throw("ERROR");
-		digits.push_back(s[i] - '0');
-	}
-}
-BigInt::BigInt(unsigned long long nr){
-	do{
-		digits.push_back(nr % 10);
-		nr /= 10;
-	} while (nr);
-}
-BigInt::BigInt(const char *s){
-	digits = "";
-	for (int i = strlen(s) - 1; i >= 0;i--)
-	{
-		if(!isdigit(s[i]))
-			throw("ERROR");
-		digits.push_back(s[i] - '0');
-	}
-}
-BigInt::BigInt(BigInt & a){
-	digits = a.digits;
-}
+int main() {
+    BigInt a("123456789123456789");
+    BigInt b("987654321987654321");
 
-bool Null(const BigInt& a){
-	if(a.digits.size() == 1 && a.digits[0] == 0)
-		return true;
-	return false;
-}
-int Length(const BigInt & a){
-	return a.digits.size();
-}
-int BigInt::operator[](const int index)const{
-	if(digits.size() <= index || index < 0)
-		throw("ERROR");
-	return digits[index];
-}
-bool operator==(const BigInt &a, const BigInt &b){
-	return a.digits == b.digits;
-}
-bool operator!=(const BigInt & a,const BigInt &b){
-	return !(a == b);
-}
-bool operator<(const BigInt&a,const BigInt&b){
-	int n = Length(a), m = Length(b);
-	if(n != m)
-		return n < m;
-	while(n--)
-		if(a.digits[n] != b.digits[n])
-			return a.digits[n] < b.digits[n];
-	return false;
-}
-bool operator>(const BigInt&a,const BigInt&b){
-	return b < a;
-}
-bool operator>=(const BigInt&a,const BigInt&b){
-	return !(a < b);
-}
-bool operator<=(const BigInt&a,const BigInt&b){
-	return !(a > b);
-}
+    BigInt sum = a + b;
+    BigInt diff = a - b;
+    BigInt multi = a * b;
 
-BigInt &BigInt::operator=(const BigInt &a){
-	digits = a.digits;
-	return *this;
-}
+    sum.display();  // Display sum
+    diff.display(); // Display difference
+    multi.display();// Display product
 
-BigInt &BigInt::operator++(){
-	int i, n = digits.size();
-	for (i = 0; i < n && digits[i] == 9;i++)
-		digits[i] = 0;
-	if(i == n)
-		digits.push_back(1);
-	else
-		digits[i]++;
-	return *this;
-}
-BigInt BigInt::operator++(int temp){
-	BigInt aux;
-	aux = *this;
-	++(*this);
-	return aux;
-}
+    BigInt fib50 = BigInt::fibonacci(50);  // 50th Fibonacci number
+    fib50.display();
 
-BigInt &BigInt::operator--(){
-	if(digits[0] == 0 && digits.size() == 1)
-		throw("UNDERFLOW");
-	int i, n = digits.size();
-	for (i = 0; digits[i] == 0 && i < n;i++)
-		digits[i] = 9;
-	digits[i]--;
-	if(n > 1 && digits[n - 1] == 0)
-		digits.pop_back();
-	return *this;
-}
-BigInt BigInt::operator--(int temp){
-	BigInt aux;
-	aux = *this;
-	--(*this);
-	return aux;
-}
+    BigInt catalan10 = BigInt::catalan(10);  // 10th Catalan number
+    catalan10.display();
 
-BigInt &operator+=(BigInt &a,const BigInt& b){
-	int t = 0, s, i;
-	int n = Length(a), m = Length(b);
-	if(m > n)
-		a.digits.append(m - n, 0);
-	n = Length(a);
-	for (i = 0; i < n;i++){
-		if(i < m)
-			s = (a.digits[i] + b.digits[i]) + t;
-		else
-			s = a.digits[i] + t;
-		t = s / 10;
-		a.digits[i] = (s % 10);
-	}
-	if(t)
-		a.digits.push_back(t);
-	return a;
-}
-BigInt operator+(const BigInt &a, const BigInt &b){
-	BigInt temp;
-	temp = a;
-	temp += b;
-	return temp;
-}
-
-BigInt &operator-=(BigInt&a,const BigInt &b){
-	if(a < b)
-		throw("UNDERFLOW");
-	int n = Length(a), m = Length(b);
-	int i, t = 0, s;
-	for (i = 0; i < n;i++){
-		if(i < m)
-			s = a.digits[i] - b.digits[i]+ t;
-		else
-			s = a.digits[i]+ t;
-		if(s < 0)
-			s += 10,
-			t = -1;
-		else
-			t = 0;
-		a.digits[i] = s;
-	}
-	while(n > 1 && a.digits[n - 1] == 0)
-		a.digits.pop_back(),
-		n--;
-	return a;
-}
-BigInt operator-(const BigInt& a,const BigInt&b){
-	BigInt temp;
-	temp = a;
-	temp -= b;
-	return temp;
-}
-
-BigInt &operator*=(BigInt &a, const BigInt &b)
-{
-	if(Null(a) || Null(b)){
-		a = BigInt();
-		return a;
-	}
-	int n = a.digits.size(), m = b.digits.size();
-	vector<int> v(n + m, 0);
-	for (int i = 0; i < n;i++)
-		for (int j = 0; j < m;j++){
-			v[i + j] += (a.digits[i] ) * (b.digits[j]);
-		}
-	n += m;
-	a.digits.resize(v.size());
-	for (int s, i = 0, t = 0; i < n; i++)
-	{
-		s = t + v[i];
-		v[i] = s % 10;
-		t = s / 10;
-		a.digits[i] = v[i] ;
-	}
-	for (int i = n - 1; i >= 1 && !v[i];i--)
-			a.digits.pop_back();
-	return a;
-}
-BigInt operator*(const BigInt&a,const BigInt&b){
-	BigInt temp;
-	temp = a;
-	temp *= b;
-	return temp;
-}
-
-BigInt &operator/=(BigInt& a,const BigInt &b){
-	if(Null(b))
-		throw("Arithmetic Error: Division By 0");
-	if(a < b){
-		a = BigInt();
-		return a;
-	}
-	if(a == b){
-		a = BigInt(1);
-		return a;
-	}
-	int i, lgcat = 0, cc;
-	int n = Length(a), m = Length(b);
-	vector<int> cat(n, 0);
-	BigInt t;
-	for (i = n - 1; t * 10 + a.digits[i] < b;i--){
-		t *= 10;
-		t += a.digits[i] ;
-	}
-	for (; i >= 0; i--){
-		t = t * 10 + a.digits[i];
-		for (cc = 9; cc * b > t;cc--);
-		t -= cc * b;
-		cat[lgcat++] = cc;
-	}
-	a.digits.resize(cat.size());
-	for (i = 0; i < lgcat;i++)
-		a.digits[i] = cat[lgcat - i - 1];
-	a.digits.resize(lgcat);
-	return a;
-}
-BigInt operator/(const BigInt &a,const BigInt &b){
-	BigInt temp;
-	temp = a;
-	temp /= b;
-	return temp;
-}
-
-BigInt &operator%=(BigInt& a,const BigInt &b){
-	if(Null(b))
-		throw("Arithmetic Error: Division By 0");
-	if(a < b){
-		return a;
-	}
-	if(a == b){
-		a = BigInt();
-		return a;
-	}
-	int i, lgcat = 0, cc;
-	int n = Length(a), m = Length(b);
-	vector<int> cat(n, 0);
-	BigInt t;
-	for (i = n - 1; t * 10 + a.digits[i] < b;i--){
-		t *= 10;
-		t += a.digits[i];
-	}
-	for (; i >= 0; i--){
-		t = t * 10 + a.digits[i];
-		for (cc = 9; cc * b > t;cc--);
-		t -= cc * b;
-		cat[lgcat++] = cc;
-	}
-	a = t;
-	return a;
-}
-BigInt operator%(const BigInt &a,const BigInt &b){
-	BigInt temp;
-	temp = a;
-	temp %= b;
-	return temp;
-}
-
-BigInt &operator^=(BigInt & a,const BigInt & b){
-	BigInt Exponent, Base(a);
-	Exponent = b;
-	a = 1;
-	while(!Null(Exponent)){
-		if(Exponent[0] & 1)
-			a *= Base;
-		Base *= Base;
-		divide_by_2(Exponent);
-	}
-	return a;
-}
-BigInt operator^(BigInt & a,BigInt & b){
-	BigInt temp(a);
-	temp ^= b;
-	return temp;
-}
-
-void divide_by_2(BigInt & a){
-	int add = 0;
-	for (int i = a.digits.size() - 1; i >= 0;i--){
-		int digit = (a.digits[i] >> 1) + add;
-		add = ((a.digits[i] & 1) * 5);
-		a.digits[i] = digit;
-	}
-	while(a.digits.size() > 1 && !a.digits.back())
-		a.digits.pop_back();
-}
-
-BigInt sqrt(BigInt & a){
-	BigInt left(1), right(a), v(1), mid, prod;
-	divide_by_2(right);
-	while(left <= right){
-		mid += left;
-		mid += right;
-		divide_by_2(mid);
-		prod = (mid * mid);
-		if(prod <= a){
-			v = mid;
-			++mid;
-			left = mid;
-		}
-		else{
-			--mid;
-			right = mid;
-		}
-		mid = BigInt();
-	}
-	return v;
-}
-
-BigInt NthCatalan(int n){
-	BigInt a(1),b;
-	for (int i = 2; i <= n;i++)
-		a *= i;
-	b = a;
-	for (int i = n + 1; i <= 2 * n;i++)
-		b *= i;
-	a *= a;
-	a *= (n + 1);
-	b /= a;
-	return b;
-}
-
-BigInt NthFibonacci(int n){
-	BigInt a(1), b(1), c;
-	if(!n)
-		return c;
-	n--;
-	while(n--){
-		c = a + b;
-		b = a;
-		a = c;
-	}
-	return b;
-}
-
-BigInt Factorial(int n){
-	BigInt f(1);
-	for (int i = 2; i <= n;i++)
-		f *= i;
-	return f;
-}
-
-istream &operator>>(istream &in,BigInt&a){
-	string s;
-	in >> s;
-	int n = s.size();
-	for (int i = n - 1; i >= 0;i--){
-		if(!isdigit(s[i]))
-			throw("INVALID NUMBER");
-		a.digits[n - i - 1] = s[i];
-	}
-	return in;
-}
-
-ostream &operator<<(ostream &out,const BigInt &a){
-	for (int i = a.digits.size() - 1; i >= 0;i--)
-		cout << (short)a.digits[i];
-	return cout;
-}
-
-//Driver code with some examples
-int main()
-{
-	BigInt first("12345");
-	cout << "The number of digits"
-		<< " in first big integer = "
-		<< Length(first) << '\n';
-	BigInt second(12345);
-	if (first == second) {
-		cout << "first and second are equal!\n";
-	}
-	else
-		cout << "Not equal!\n";
-	BigInt third("10000");
-	BigInt fourth("100000");
-	if (third < fourth) {
-		cout << "third is smaller than fourth!\n";
-	}
-	BigInt fifth("10000000");
-	if (fifth > fourth) {
-		cout << "fifth is larger than fourth!\n";
-	}
-
-	// Printing all the numbers
-	cout << "first = " << first << '\n';
-	cout << "second = " << second << '\n';
-	cout << "third = " << third << '\n';
-	cout << "fourth = " << fourth<< '\n';
-	cout << "fifth = " << fifth<< '\n';
-
-	// Incrementing the value of first
-	first++;
-	cout << "After incrementing the"
-		<< " value of first is : ";
-	cout << first << '\n';
-	BigInt sum;
-	sum = (fourth + fifth);
-	cout << "Sum of fourth and fifth = "
-		<< sum << '\n';
-	BigInt product;
-	product = second * third;
-	cout << "Product of second and third = "
-		<< product << '\n';
-
-	// Print the fibonacci number from 1 to 100
-	cout << "-------------------------Fibonacci"
-		<< "------------------------------\n";
-	for (int i = 0; i <= 100; i++) {
-		BigInt Fib;
-		Fib = NthFibonacci(i);
-		cout << "Fibonacci " << i << " = " << Fib<<'\n';
-	}
-	cout << "-------------------------Catalan"
-		<< "------------------------------\n";
-	for (int i = 0; i <= 100; i++) {
-		BigInt Cat;
-		Cat = NthCatalan(i);
-		cout << "Catalan " << i << " = " << Cat<<'\n';
-	}
-
-	// Calculating factorial of from 1 to 100
-	cout << "-------------------------Factorial"
-		<< "------------------------------\n";
-	for (int i = 0; i <= 100; i++) {
-		BigInt fact;
-		fact = Factorial(i);
-		cout << "Factorial of "
-			<< i << " = ";
-		cout << fact << '\n';
-	}
-// This code is contributed
-// by Gatea David
+    return 0;
 }
