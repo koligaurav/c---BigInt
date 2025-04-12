@@ -59,6 +59,12 @@ private:
         }
 
         std::reverse(result.begin(), result.end());
+        size_t nonZeroIndex = result.find_first_not_of('0');
+        if (nonZeroIndex != std::string::npos) {
+            result = result.substr(nonZeroIndex);
+        } else {
+            result = "0";
+        }
         return result;
     }
 
@@ -91,7 +97,7 @@ private:
         return res.empty() ? "0" : res;
     }
 
-    static std::pair<std::string, std::string> divideStrings(std::string dividend, const std::string &divisor) {
+    static std::pair<std::string, std::string> divideStrings(std::string dividend, std::string divisor) {
         if (divisor == "0") throw std::runtime_error("Division by zero");
         
         if (isSmaller(dividend, divisor)) {
@@ -100,22 +106,32 @@ private:
 
         std::string quotient;
         std::string current;
-        
-        for (size_t i = 0; i < dividend.size(); i++) {
-            current.push_back(dividend[i]);
+        size_t index = 0;
+
+        while (index < dividend.size()) {
+            current.push_back(dividend[index++]);
+            
+            // Remove leading zeros
             current.erase(0, current.find_first_not_of('0'));
             if (current.empty()) current = "0";
             
+            if (isSmaller(current, divisor)) {
+                if (!quotient.empty()) {
+                    quotient.push_back('0');
+                }
+                continue;
+            }
+            
             int count = 0;
-            while (!isSmaller(current, divisor)) {
-                current = subtractStrings(current, divisor);
+            std::string tempDivisor = divisor;
+            while (!isSmaller(current, tempDivisor)) {
+                current = subtractStrings(current, tempDivisor);
                 count++;
             }
             
             quotient.push_back(count + '0');
         }
         
-        quotient.erase(0, quotient.find_first_not_of('0'));
         if (quotient.empty()) quotient = "0";
         
         current.erase(0, current.find_first_not_of('0'));
@@ -218,11 +234,17 @@ public:
             return isNegative;
         }
         
-        if (number.length() != other.number.length()) {
-            return (number.length() < other.number.length()) ^ isNegative;
+        if (isNegative) {
+            if (number.length() != other.number.length()) {
+                return number.length() > other.number.length();
+            }
+            return number > other.number;
+        } else {
+            if (number.length() != other.number.length()) {
+                return number.length() < other.number.length();
+            }
+            return number < other.number;
         }
-        
-        return (number < other.number) ^ isNegative;
     }
 
     bool operator<=(const BigInt &other) const {
@@ -283,12 +305,12 @@ int main() {
         std::cout << "a = " << a << std::endl;
         std::cout << "b = " << b << std::endl;
         
-        std::cout << "a + b = " << a + b << std::endl;
-        std::cout << "a - b = " << a - b << std::endl;
-        std::cout << "b - a = " << b - a << std::endl;
-        std::cout << "a * b = " << a * b << std::endl;
-        std::cout << "b / a = " << b / a << std::endl;
-        std::cout << "a % b = " << a % b << std::endl;
+        std::cout << "a + b = " << (a + b) << std::endl;
+        std::cout << "a - b = " << (a - b) << std::endl;
+        std::cout << "b - a = " << (b - a) << std::endl;
+        std::cout << "a * b = " << (a * b) << std::endl;
+        std::cout << "b / a = " << (b / a) << std::endl;
+        std::cout << "a % b = " << (a % b) << std::endl;
         
         // Test comparison operators
         std::cout << "a < b: " << (a < b) << std::endl;
@@ -307,11 +329,11 @@ int main() {
         std::cout << "c = " << c << std::endl;
         std::cout << "d = " << d << std::endl;
         
-        std::cout << "c + d = " << c + d << std::endl;
-        std::cout << "c - d = " << c - d << std::endl;
-        std::cout << "d - c = " << d - c << std::endl;
-        std::cout << "c * d = " << c * d << std::endl;
-        std::cout << "d / c = " << d / c << std::endl;
+        std::cout << "c + d = " << (c + d) << std::endl;
+        std::cout << "c - d = " << (c - d) << std::endl;
+        std::cout << "d - c = " << (d - c) << std::endl;
+        std::cout << "c * d = " << (c * d) << std::endl;
+        std::cout << "d / c = " << (d / c) << std::endl;
         
     } catch (const std::exception &e) {
         std::cerr << "Error: " << e.what() << std::endl;
